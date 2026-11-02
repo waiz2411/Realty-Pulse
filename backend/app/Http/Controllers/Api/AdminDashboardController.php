@@ -91,7 +91,8 @@ class AdminDashboardController extends Controller
                 ->withCount('leads')
                 ->orderByDesc('leads_count')
                 ->limit(5)
-                ->get(['id', 'name', 'email', 'account_status', 'leads_count']);
+                ->get(['id', 'name', 'email', 'account_status', 'leads_count'])
+                ->toArray();
 
             return [
                 'overview' => [
@@ -111,24 +112,26 @@ class AdminDashboardController extends Controller
         });
     }
 
-    private function getRecentAgentsData()
+    private function getRecentAgentsData(): array
     {
         return Cache::remember('admin_recent_agents', 20, function () {
             return User::where('role', 'agent')
                 ->withCount('leads')
                 ->latest()
                 ->limit(5)
-                ->get();
+                ->get()
+                ->toArray();
         });
     }
 
-    private function getRecentLeadsData()
+    private function getRecentLeadsData(): array
     {
         return Cache::remember('admin_recent_leads', 20, function () {
             return Lead::with('agent:id,name,email,phone')
                 ->latest()
                 ->limit(10)
-                ->get();
+                ->get()
+                ->toArray();
         });
     }
 

@@ -43,10 +43,10 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
     try {
       // 1 single lightning-fast HTTP request for all agent dashboard data
       const res = await api.get('/agent/dashboard/overview');
-      setStats(res.data.stats);
-      setRecentLeads(res.data.recent_leads);
-      setTodayFollowUps(res.data.today_followups);
-      setUpcomingFollowUps(res.data.upcoming_followups);
+      setStats(res.data?.stats || null);
+      setRecentLeads(Array.isArray(res.data?.recent_leads) ? res.data.recent_leads : []);
+      setTodayFollowUps(Array.isArray(res.data?.today_followups) ? res.data.today_followups : []);
+      setUpcomingFollowUps(Array.isArray(res.data?.upcoming_followups) ? res.data.upcoming_followups : []);
     } catch {
       try {
         const [statsRes, recentRes, todayRes, upcomingRes] = await Promise.all([
@@ -56,10 +56,10 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
           api.get('/agent/dashboard/upcoming-followups'),
         ]);
 
-        setStats(statsRes.data);
-        setRecentLeads(recentRes.data);
-        setTodayFollowUps(todayRes.data);
-        setUpcomingFollowUps(upcomingRes.data);
+        setStats(statsRes.data || null);
+        setRecentLeads(Array.isArray(recentRes.data) ? recentRes.data : []);
+        setTodayFollowUps(Array.isArray(todayRes.data) ? todayRes.data : []);
+        setUpcomingFollowUps(Array.isArray(upcomingRes.data) ? upcomingRes.data : []);
       } catch {
         toast.error('Failed to load dashboard data');
       }
