@@ -85,6 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Super Admin Only Routes
     Route::middleware('admin')->prefix('admin')->group(function () {
         // Admin Dashboard & Analytics
+        Route::get('/dashboard/overview', [AdminDashboardController::class, 'overview']);
         Route::get('/dashboard/stats', [AdminDashboardController::class, 'stats']);
         Route::get('/dashboard/recent-agents', [AdminDashboardController::class, 'recentAgents']);
         Route::get('/dashboard/recent-leads', [AdminDashboardController::class, 'recentLeads']);
@@ -103,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Agent Protected Routes (Guarded by subscription & active status check)
     Route::middleware('agent.active')->prefix('agent')->group(function () {
         // Dashboard
+        Route::get('/dashboard/overview', [AgentDashboardController::class, 'overview']);
         Route::get('/dashboard/stats', [AgentDashboardController::class, 'stats']);
         Route::get('/dashboard/recent-leads', [AgentDashboardController::class, 'recentLeads']);
         Route::get('/dashboard/today-followups', [AgentDashboardController::class, 'todayFollowUps']);

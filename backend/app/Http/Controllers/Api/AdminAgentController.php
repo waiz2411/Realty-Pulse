@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -84,6 +86,8 @@ class AdminAgentController extends Controller
             'subscription_expiry_date' => $validated['subscription_expiry_date'] ?? now()->addMonth()->toDateString(),
         ]);
 
+        $this->clearAdminCache();
+
         return response()->json([
             'message' => 'Agent account created successfully',
             'agent' => $agent->loadCount('leads'),
@@ -104,20 +108,30 @@ class AdminAgentController extends Controller
             ->withCount('leads')
             ->findOrFail($id);
 
+        $today = now()->toDateString();
+        $row = DB::table('leads')
+            ->where('agent_id', $agent->id)
+            ->selectRaw("
+                COUNT(*) as total_leads,
+                SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new_leads,
+                SUM(CASE WHEN status = 'contacted' THEN 1 ELSE 0 END) as contacted,
+                SUM(CASE WHEN status = 'qualified' THEN 1 ELSE 0 END) as qualified,
+                SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) as won,
+                SUM(CASE WHEN status = 'lost' THEN 1 ELSE 0 END) as lost,
+                SUM(CASE WHEN follow_up_date < ? AND status NOT IN ('won', 'lost') THEN 1 ELSE 0 END) as overdue_followups,
+                SUM(CASE WHEN follow_up_date = ? THEN 1 ELSE 0 END) as today_followups
+            ", [$today, $today])
+            ->first();
+
         $stats = [
-            'total_leads' => $agent->leads()->count(),
-            'new_leads' => $agent->leads()->where('status', 'new')->count(),
-            'contacted' => $agent->leads()->where('status', 'contacted')->count(),
-            'qualified' => $agent->leads()->where('status', 'qualified')->count(),
-            'won' => $agent->leads()->where('status', 'won')->count(),
-            'lost' => $agent->leads()->where('status', 'lost')->count(),
-            'overdue_followups' => $agent->leads()
-                ->where('follow_up_date', '<', now()->toDateString())
-                ->whereNotIn('status', ['won', 'lost'])
-                ->count(),
-            'today_followups' => $agent->leads()
-                ->whereDate('follow_up_date', now()->toDateString())
-                ->count(),
+            'total_leads' => (int) ($row->total_leads ?? 0),
+            'new_leads' => (int) ($row->new_leads ?? 0),
+            'contacted' => (int) ($row->contacted ?? 0),
+            'qualified' => (int) ($row->qualified ?? 0),
+            'won' => (int) ($row->won ?? 0),
+            'lost' => (int) ($row->lost ?? 0),
+            'overdue_followups' => (int) ($row->overdue_followups ?? 0),
+            'today_followups' => (int) ($row->today_followups ?? 0),
         ];
 
         $recentLeads = $agent->leads()
@@ -166,6 +180,8 @@ class AdminAgentController extends Controller
 
         $agent->update($updateData);
 
+        $this->clearAdminCache();
+
         return response()->json([
             'message' => 'Agent account updated successfully',
             'agent' => $agent->fresh()->loadCount('leads'),
@@ -186,6 +202,8 @@ class AdminAgentController extends Controller
         $agent->update([
             'account_status' => $validated['account_status'],
         ]);
+
+        $this->clearAdminCache();
 
         return response()->json([
             'message' => "Agent account is now {$validated['account_status']}",
@@ -234,8 +252,16 @@ class AdminAgentController extends Controller
         $agentName = $agent->name;
         $agent->delete();
 
+        $this->clearAdminCache();
+
         return response()->json([
             'message' => "Agent account '{$agentName}' has been permanently deleted.",
         ]);
+    }
+
+    private function clearAdminCache(): void
+    {
+        Cache::forget('admin_dashboard_stats');
+        Cache::forget('admin_recent_agents');
     }
 }

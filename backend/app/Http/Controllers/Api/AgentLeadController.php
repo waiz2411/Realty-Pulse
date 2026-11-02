@@ -128,6 +128,8 @@ class AgentLeadController extends Controller
             ]);
         }
 
+        $this->clearDashboardCache($lead->agent_id);
+
         return response()->json([
             'message' => 'Lead created successfully',
             'lead' => $lead->load(['notes', 'activities']),
@@ -218,6 +220,8 @@ class AgentLeadController extends Controller
             'description' => 'Lead details were updated',
         ]);
 
+        $this->clearDashboardCache($lead->agent_id);
+
         return response()->json([
             'message' => 'Lead updated successfully',
             'lead' => $lead->fresh()->load(['notes', 'activities']),
@@ -253,6 +257,8 @@ class AgentLeadController extends Controller
             'old_value' => $oldStatus,
             'new_value' => $newStatus,
         ]);
+
+        $this->clearDashboardCache($lead->agent_id);
 
         return response()->json([
             'message' => 'Lead status updated successfully',
@@ -377,6 +383,8 @@ class AgentLeadController extends Controller
             'new_value' => $newDate,
         ]);
 
+        $this->clearDashboardCache($lead->agent_id);
+
         return response()->json([
             'message' => 'Follow-up updated successfully',
             'lead' => $lead->fresh()->load(['notes', 'activities']),
@@ -396,10 +404,20 @@ class AgentLeadController extends Controller
         $lead = $query->findOrFail($id);
 
         $leadName = $lead->name;
+        $agentId = $lead->agent_id;
         $lead->delete();
+
+        $this->clearDashboardCache($agentId);
 
         return response()->json([
             'message' => "Lead '{$leadName}' has been deleted successfully",
         ]);
+    }
+
+    private function clearDashboardCache($agentId): void
+    {
+        \Illuminate\Support\Facades\Cache::forget("agent_stats_{$agentId}");
+        \Illuminate\Support\Facades\Cache::forget('admin_dashboard_stats');
+        \Illuminate\Support\Facades\Cache::forget('admin_recent_leads');
     }
 }

@@ -28,6 +28,12 @@ php artisan view:clear || true
 echo "Checking and executing database migrations..."
 php artisan migrate --force || echo "Notice: Database migration pending or Hostinger host connecting..."
 
+# Warm configuration and route caches for lightning-fast production performance
+echo "Warming Laravel route, config, and view caches..."
+php artisan config:cache || true
+php artisan route:cache || true
+php artisan view:cache || true
+
 # Start background services via supervisord
 echo "Starting Nginx and PHP-FPM via Supervisord..."
 exec /usr/bin/supervisord -c /etc/supervisord.conf

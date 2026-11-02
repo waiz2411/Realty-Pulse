@@ -59,17 +59,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const fetchAdminData = async () => {
     try {
-      const [statsRes, agentsRes, leadsRes] = await Promise.all([
-        api.get('/admin/dashboard/stats'),
-        api.get('/admin/dashboard/recent-agents'),
-        api.get('/admin/dashboard/recent-leads'),
-      ]);
-
-      setStats(statsRes.data);
-      setRecentAgents(agentsRes.data);
-      setRecentLeads(leadsRes.data);
+      // 1 single lightning-fast HTTP request for all dashboard data
+      const res = await api.get('/admin/dashboard/overview');
+      setStats(res.data.stats);
+      setRecentAgents(res.data.recent_agents);
+      setRecentLeads(res.data.recent_leads);
     } catch {
-      toast.error('Failed to load admin dashboard');
+      try {
+        const [statsRes, agentsRes, leadsRes] = await Promise.all([
+          api.get('/admin/dashboard/stats'),
+          api.get('/admin/dashboard/recent-agents'),
+          api.get('/admin/dashboard/recent-leads'),
+        ]);
+
+        setStats(statsRes.data);
+        setRecentAgents(agentsRes.data);
+        setRecentLeads(leadsRes.data);
+      } catch {
+        toast.error('Failed to load admin dashboard');
+      }
     } finally {
       setLoading(false);
     }

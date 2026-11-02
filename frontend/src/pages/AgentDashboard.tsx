@@ -41,19 +41,28 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
 
   const fetchDashboardData = async () => {
     try {
-      const [statsRes, recentRes, todayRes, upcomingRes] = await Promise.all([
-        api.get('/agent/dashboard/stats'),
-        api.get('/agent/dashboard/recent-leads'),
-        api.get('/agent/dashboard/today-followups'),
-        api.get('/agent/dashboard/upcoming-followups'),
-      ]);
-
-      setStats(statsRes.data);
-      setRecentLeads(recentRes.data);
-      setTodayFollowUps(todayRes.data);
-      setUpcomingFollowUps(upcomingRes.data);
+      // 1 single lightning-fast HTTP request for all agent dashboard data
+      const res = await api.get('/agent/dashboard/overview');
+      setStats(res.data.stats);
+      setRecentLeads(res.data.recent_leads);
+      setTodayFollowUps(res.data.today_followups);
+      setUpcomingFollowUps(res.data.upcoming_followups);
     } catch {
-      toast.error('Failed to load dashboard data');
+      try {
+        const [statsRes, recentRes, todayRes, upcomingRes] = await Promise.all([
+          api.get('/agent/dashboard/stats'),
+          api.get('/agent/dashboard/recent-leads'),
+          api.get('/agent/dashboard/today-followups'),
+          api.get('/agent/dashboard/upcoming-followups'),
+        ]);
+
+        setStats(statsRes.data);
+        setRecentLeads(recentRes.data);
+        setTodayFollowUps(todayRes.data);
+        setUpcomingFollowUps(upcomingRes.data);
+      } catch {
+        toast.error('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }

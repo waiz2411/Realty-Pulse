@@ -7,70 +7,33 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AdminDashboardController extends Controller
 {
     /**
+     * Complete admin dashboard overview in a single network request
+     */
+    public function overview(): JsonResponse
+    {
+        $stats = $this->getStatsData();
+        $recentAgents = $this->getRecentAgentsData();
+        $recentLeads = $this->getRecentLeadsData();
+
+        return response()->json([
+            'stats' => $stats,
+            'recent_agents' => $recentAgents,
+            'recent_leads' => $recentLeads,
+        ]);
+    }
+
+    /**
      * Get platform overview stats & analytics
      */
     public function stats(): JsonResponse
     {
-        $today = now()->toDateString();
-
-        $totalAgents = User::where('role', 'agent')->count();
-        $activeAgents = User::where('role', 'agent')->where('account_status', 'active')->count();
-        $suspendedAgents = User::where('role', 'agent')->where('account_status', 'suspended')->count();
-
-        $totalLeads = Lead::count();
-        $leadsToday = Lead::whereDate('created_at', $today)->count();
-
-        $activeSubscriptions = User::where('role', 'agent')
-            ->where('subscription_status', 'active')
-            ->where(function ($q) use ($today) {
-                $q->whereNull('subscription_expiry_date')
-                  ->orWhere('subscription_expiry_date', '>=', $today);
-            })
-            ->count();
-
-        $expiredSubscriptions = User::where('role', 'agent')
-            ->where(function ($q) use ($today) {
-                $q->where('subscription_status', 'expired')
-                  ->orWhere(function ($sub) use ($today) {
-                      $sub->whereNotNull('subscription_expiry_date')
-                          ->where('subscription_expiry_date', '<', $today);
-                  });
-            })
-            ->count();
-
-        // Leads by status breakdown
-        $leadsByStatus = Lead::select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
-
-        // Top 5 agents by lead count
-        $topAgents = User::where('role', 'agent')
-            ->withCount('leads')
-            ->orderByDesc('leads_count')
-            ->limit(5)
-            ->get(['id', 'name', 'email', 'account_status', 'leads_count']);
-
-        return response()->json([
-            'overview' => [
-                'total_agents' => $totalAgents,
-                'active_agents' => $activeAgents,
-                'suspended_agents' => $suspendedAgents,
-                'total_leads' => $totalLeads,
-                'leads_added_today' => $leadsToday,
-                'active_subscriptions' => $activeSubscriptions,
-                'expired_subscriptions' => $expiredSubscriptions,
-            ],
-            'analytics' => [
-                'leads_by_status' => $leadsByStatus,
-                'top_agents' => $topAgents,
-            ],
-        ]);
+        return response()->json($this->getStatsData());
     }
 
     /**
@@ -78,13 +41,7 @@ class AdminDashboardController extends Controller
      */
     public function recentAgents(): JsonResponse
     {
-        $agents = User::where('role', 'agent')
-            ->withCount('leads')
-            ->latest()
-            ->limit(5)
-            ->get();
-
-        return response()->json($agents);
+        return response()->json($this->getRecentAgentsData());
     }
 
     /**
@@ -92,12 +49,87 @@ class AdminDashboardController extends Controller
      */
     public function recentLeads(): JsonResponse
     {
-        $leads = Lead::with('agent:id,name,email,phone')
-            ->latest()
-            ->limit(10)
-            ->get();
+        return response()->json($this->getRecentLeadsData());
+    }
 
-        return response()->json($leads);
+    /**
+     * Helper to get stats data with smart caching
+     */
+    private function getStatsData(): array
+    {
+        return Cache::remember('admin_dashboard_stats', 20, function () {
+            $today = now()->toDateString();
+
+            // Consolidated Agent counts in 1 single query
+            $agentStats = DB::table('users')
+                ->where('role', 'agent')
+                ->selectRaw("
+                    COUNT(*) as total_agents,
+                    SUM(CASE WHEN account_status = 'active' THEN 1 ELSE 0 END) as active_agents,
+                    SUM(CASE WHEN account_status = 'suspended' THEN 1 ELSE 0 END) as suspended_agents,
+                    SUM(CASE WHEN subscription_status = 'active' AND (subscription_expiry_date IS NULL OR subscription_expiry_date >= ?) THEN 1 ELSE 0 END) as active_subscriptions,
+                    SUM(CASE WHEN subscription_status = 'expired' OR (subscription_expiry_date IS NOT NULL AND subscription_expiry_date < ?) THEN 1 ELSE 0 END) as expired_subscriptions
+                ", [$today, $today])
+                ->first();
+
+            // Consolidated Lead counts in 1 single query
+            $leadStats = DB::table('leads')
+                ->selectRaw("
+                    COUNT(*) as total_leads,
+                    SUM(CASE WHEN DATE(created_at) = ? THEN 1 ELSE 0 END) as leads_added_today
+                ", [$today])
+                ->first();
+
+            // Leads by status breakdown
+            $leadsByStatus = Lead::select('status', DB::raw('count(*) as count'))
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray();
+
+            // Top 5 agents by lead count
+            $topAgents = User::where('role', 'agent')
+                ->withCount('leads')
+                ->orderByDesc('leads_count')
+                ->limit(5)
+                ->get(['id', 'name', 'email', 'account_status', 'leads_count']);
+
+            return [
+                'overview' => [
+                    'total_agents' => (int) ($agentStats->total_agents ?? 0),
+                    'active_agents' => (int) ($agentStats->active_agents ?? 0),
+                    'suspended_agents' => (int) ($agentStats->suspended_agents ?? 0),
+                    'total_leads' => (int) ($leadStats->total_leads ?? 0),
+                    'leads_added_today' => (int) ($leadStats->leads_added_today ?? 0),
+                    'active_subscriptions' => (int) ($agentStats->active_subscriptions ?? 0),
+                    'expired_subscriptions' => (int) ($agentStats->expired_subscriptions ?? 0),
+                ],
+                'analytics' => [
+                    'leads_by_status' => $leadsByStatus,
+                    'top_agents' => $topAgents,
+                ],
+            ];
+        });
+    }
+
+    private function getRecentAgentsData()
+    {
+        return Cache::remember('admin_recent_agents', 20, function () {
+            return User::where('role', 'agent')
+                ->withCount('leads')
+                ->latest()
+                ->limit(5)
+                ->get();
+        });
+    }
+
+    private function getRecentLeadsData()
+    {
+        return Cache::remember('admin_recent_leads', 20, function () {
+            return Lead::with('agent:id,name,email,phone')
+                ->latest()
+                ->limit(10)
+                ->get();
+        });
     }
 
     /**
