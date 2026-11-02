@@ -21,7 +21,15 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        try {
+            $user = User::where('email', $request->email)->first();
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Database connection failed: ' . $e->getMessage(),
+                'error_type' => 'DATABASE_ERROR',
+                'hint' => 'Check your DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD environment variables on Render. If using Hostinger, ensure you entered the Remote MySQL Server IP and imported database.sql.',
+            ], 500);
+        }
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([

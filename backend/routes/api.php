@@ -7,7 +7,67 @@ use App\Http\Controllers\Api\AgentLeadController;
 use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 
-// Public Routes
+// Public Routes & Diagnostics
+Route::get('/health', function () {
+    $dbStatus = 'unknown';
+    $dbError = null;
+    $tables = [];
+    $usersCount = 0;
+
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbStatus = 'connected';
+        $tables = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
+        $usersCount = \App\Models\User::count();
+    } catch (\Throwable $e) {
+        $dbStatus = 'disconnected';
+        $dbError = $e->getMessage();
+    }
+
+    return response()->json([
+        'status' => $dbStatus === 'connected' ? 'healthy' : 'degraded',
+        'app_env' => config('app.env'),
+        'app_key_set' => ! empty(config('app.key')),
+        'database' => [
+            'status' => $dbStatus,
+            'driver' => config('database.default'),
+            'host' => config('database.connections.mysql.host'),
+            'database' => config('database.connections.mysql.database'),
+            'username' => config('database.connections.mysql.username'),
+            'error' => $dbError,
+            'tables_count' => count($tables),
+            'users_count' => $usersCount,
+        ],
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
+Route::get('/setup-db', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate --force');
+        $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
+
+        if (\App\Models\User::count() === 0) {
+            \Illuminate\Support\Facades\Artisan::call('db:seed --force');
+            $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+        } else {
+            $seedOutput = 'Users already exist. Seeding skipped.';
+        }
+
+        return response()->json([
+            'message' => 'Database successfully migrated and initialized!',
+            'migrate_output' => $migrateOutput,
+            'seed_output' => $seedOutput,
+            'users_count' => \App\Models\User::count(),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'hint' => 'Check your DB_HOST and ensure Hostinger Remote MySQL is active.',
+        ], 500);
+    }
+});
+
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });

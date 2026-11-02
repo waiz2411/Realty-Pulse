@@ -35,8 +35,14 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 # Copy React Frontend build to public
 COPY --from=frontend-builder /app/frontend/dist ./public_frontend
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Setup entrypoint script
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Set initial permissions
+RUN mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Nginx configuration
 COPY <<'EOF' /etc/nginx/http.d/default.conf
@@ -97,4 +103,4 @@ EOF
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+ENTRYPOINT ["/entrypoint.sh"]
