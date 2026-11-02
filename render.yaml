@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: realty-pulse
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: APP_NAME
+        value: RealtyPulse
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_PORT
+        value: 3306
+      - key: DB_DATABASE
+        value: u932536786_RealtyPulse
+      - key: DB_USERNAME
+        value: u932536786_waiz2411
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
