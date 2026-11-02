@@ -23,6 +23,7 @@ fi
 php artisan config:clear || true
 php artisan route:clear || true
 php artisan view:clear || true
+php artisan cache:clear || true
 
 # Attempt auto-migration and initial seed if database is accessible
 echo "Checking and executing database migrations..."

@@ -42,6 +42,13 @@ Route::get('/health', function () {
     ]);
 });
 
+Route::get('/clear-cache', function () {
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('route:clear');
+    return response()->json(['message' => 'Cache cleared successfully!']);
+});
+
 Route::get('/setup-db', function () {
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate --force');
