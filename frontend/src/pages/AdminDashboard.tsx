@@ -7,6 +7,7 @@ import {
   Users,
   ShieldCheck,
   ShieldAlert,
+  AlertTriangle,
   Building,
   Calendar,
   CheckCircle2,
@@ -113,6 +114,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       border: 'border-emerald-200/80',
     },
     {
+      title: 'Expired Accounts',
+      value: overview?.expired_agents || 0,
+      icon: AlertTriangle,
+      bg: 'bg-amber-50/70',
+      text: 'text-amber-900',
+      border: 'border-amber-200/80',
+    },
+    {
       title: 'Suspended Agents',
       value: overview?.suspended_agents || 0,
       icon: ShieldAlert,
@@ -194,8 +203,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* 6 Core Overview Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* 7 Core Overview Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {overviewCards.map((card, idx) => {
           const Icon = card.icon;
           return (

@@ -236,6 +236,19 @@ export const AgentSettingsPage: React.FC = () => {
                 <span className="font-medium text-emerald-600">Full Access (Leads & Follow-ups)</span>
               </div>
 
+              <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500">Access Valid Until</span>
+                <span className="font-semibold text-slate-900">
+                  {user?.subscription_expiry_date
+                    ? new Date(user.subscription_expiry_date).toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'Active'}
+                </span>
+              </div>
+
               <div className="flex items-center justify-between py-2">
                 <span className="text-slate-500">Joined Platform</span>
                 <span className="font-medium text-slate-800">

@@ -120,6 +120,7 @@ export interface AdminStats {
   overview: {
     total_agents: number;
     active_agents: number;
+    expired_agents?: number;
     suspended_agents: number;
     total_leads: number;
     leads_added_today: number;

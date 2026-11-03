@@ -14,6 +14,7 @@ import {
   Loader2,
   Edit2,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -127,7 +128,27 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
             <div className="flex items-center gap-2">
               <AccountStatusBadge status={agent.account_status} />
-              <span className="text-xs text-slate-500 font-medium">Real Estate Agent</span>
+              {agent.subscription_expiry_date && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    new Date(agent.subscription_expiry_date) < new Date()
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  }`}
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>
+                    {new Date(agent.subscription_expiry_date) < new Date()
+                      ? 'Expired: '
+                      : 'Expires: '}
+                    {new Date(agent.subscription_expiry_date).toLocaleDateString([], {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -192,7 +213,7 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
           </div>
 
           {/* Contact & Meta Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
               <span className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
                 Email Address
@@ -210,6 +231,24 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
               <div className="font-medium text-slate-800 flex items-center gap-1.5 truncate">
                 <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <span>{agent.phone || 'Not provided'}</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
+              <span className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                Access Expiry
+              </span>
+              <div className="font-medium text-slate-800 flex items-center gap-1.5 truncate">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>
+                  {agent.subscription_expiry_date
+                    ? new Date(agent.subscription_expiry_date).toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'No Expiry'}
+                </span>
               </div>
             </div>
 

@@ -20,6 +20,7 @@ import {
   Phone,
   Mail,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -173,9 +174,10 @@ export const AdminAgentsPage: React.FC<AdminAgentsPageProps> = ({
               className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 text-slate-700"
             >
               <option value="">All Account Statuses</option>
-              <option value="active">Active (Full Access)</option>
-              <option value="inactive">Inactive</option>
+              <option value="active">Active (Valid Access)</option>
+              <option value="expired">Expired Access</option>
               <option value="suspended">Suspended (Access Blocked)</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
         </div>
@@ -224,55 +226,86 @@ export const AdminAgentsPage: React.FC<AdminAgentsPageProps> = ({
                     <th className="py-3 px-4">Contact</th>
                     <th className="py-3 px-4">Total Leads</th>
                     <th className="py-3 px-4">Account Status</th>
+                    <th className="py-3 px-4">Access Expiry</th>
                     <th className="py-3 px-4">Joined Date</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {agentsData.data.map((agent) => (
-                    <tr
-                      key={agent.id}
-                      className="hover:bg-slate-50/80 transition-colors group"
-                    >
-                      <td className="py-3 px-4 font-semibold text-slate-900 whitespace-nowrap">
-                        <button
-                          onClick={() => onViewAgent(agent.id)}
-                          className="hover:text-blue-600 hover:underline text-left font-semibold cursor-pointer"
-                        >
-                          {agent.name}
-                        </button>
-                      </td>
+                  {agentsData.data.map((agent) => {
+                    const expDate = agent.subscription_expiry_date
+                      ? new Date(agent.subscription_expiry_date)
+                      : null;
+                    const isExpired = expDate ? expDate < new Date() : false;
 
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="text-slate-800 flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{agent.email}</span>
-                        </div>
-                        {agent.phone && (
-                          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{agent.phone}</span>
+                    return (
+                      <tr
+                        key={agent.id}
+                        className="hover:bg-slate-50/80 transition-colors group"
+                      >
+                        <td className="py-3 px-4 font-semibold text-slate-900 whitespace-nowrap">
+                          <button
+                            onClick={() => onViewAgent(agent.id)}
+                            className="hover:text-blue-600 hover:underline text-left font-semibold cursor-pointer"
+                          >
+                            {agent.name}
+                          </button>
+                        </td>
+
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="text-slate-800 flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{agent.email}</span>
                           </div>
-                        )}
-                      </td>
+                          {agent.phone && (
+                            <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                              <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>{agent.phone}</span>
+                            </div>
+                          )}
+                        </td>
 
-                      <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs">
-                          {agent.leads_count ?? 0} leads
-                        </span>
-                      </td>
+                        <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs">
+                            {agent.leads_count ?? 0} leads
+                          </span>
+                        </td>
 
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <AccountStatusBadge status={agent.account_status} />
-                      </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <AccountStatusBadge status={agent.account_status} />
+                        </td>
 
-                      <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
-                        {new Date(agent.created_at).toLocaleDateString([], {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {expDate ? (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                isExpired
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}
+                            >
+                              <Calendar className="w-3 h-3 shrink-0" />
+                              <span>
+                                {isExpired ? 'Expired: ' : 'Expires: '}
+                                {expDate.toLocaleDateString([], {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-xs">No Expiry</span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
+                          {new Date(agent.created_at).toLocaleDateString([], {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </td>
 
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
@@ -344,8 +377,9 @@ export const AdminAgentsPage: React.FC<AdminAgentsPageProps> = ({
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
+                  );
+                })}
+              </tbody>
               </table>
             </div>
 

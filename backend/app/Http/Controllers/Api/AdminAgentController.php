@@ -35,9 +35,21 @@ class AdminAgentController extends Controller
             });
         }
 
-        // Filter by account_status
+        // Filter by account_status or access status (active, expired, suspended, inactive)
         if ($accountStatus = $request->query('account_status')) {
-            $query->where('account_status', $accountStatus);
+            $today = now()->toDateString();
+            if ($accountStatus === 'expired') {
+                $query->whereNotNull('subscription_expiry_date')
+                      ->where('subscription_expiry_date', '<', $today);
+            } elseif ($accountStatus === 'active') {
+                $query->where('account_status', 'active')
+                      ->where(function ($q) use ($today) {
+                          $q->whereNull('subscription_expiry_date')
+                            ->orWhere('subscription_expiry_date', '>=', $today);
+                      });
+            } else {
+                $query->where('account_status', $accountStatus);
+            }
         }
 
         $perPage = (int) $request->query('per_page', 10);
@@ -57,6 +69,7 @@ class AdminAgentController extends Controller
             'phone' => 'nullable|string|max:30',
             'password' => 'nullable|string|min:6',
             'account_status' => ['required', Rule::in(['active', 'inactive', 'suspended'])],
+            'subscription_expiry_date' => 'required|date',
             'add_demo_data' => 'nullable|boolean',
         ]);
 
@@ -74,7 +87,7 @@ class AdminAgentController extends Controller
             'subscription_plan' => 'standard',
             'subscription_status' => 'active',
             'subscription_start_date' => now()->toDateString(),
-            'subscription_expiry_date' => null,
+            'subscription_expiry_date' => $validated['subscription_expiry_date'],
         ]);
 
         $demoLeadsCreated = 0;
@@ -157,6 +170,7 @@ class AdminAgentController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($agent->id)],
             'phone' => 'nullable|string|max:30',
             'account_status' => ['required', Rule::in(['active', 'inactive', 'suspended'])],
+            'subscription_expiry_date' => 'required|date',
             'password' => 'nullable|string|min:6',
         ]);
 
@@ -165,6 +179,7 @@ class AdminAgentController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'account_status' => $validated['account_status'],
+            'subscription_expiry_date' => $validated['subscription_expiry_date'],
         ];
 
         if (! empty($validated['password'])) {

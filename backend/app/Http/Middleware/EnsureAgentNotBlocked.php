@@ -30,6 +30,7 @@ class EnsureAgentNotBlocked
                 'message' => 'Your agent account has been suspended by the platform administrator.',
                 'error_code' => 'ACCOUNT_SUSPENDED',
                 'account_status' => $user->account_status,
+                'subscription_expiry_date' => $user->subscription_expiry_date?->format('Y-m-d'),
             ], 403);
         }
 
@@ -38,6 +39,17 @@ class EnsureAgentNotBlocked
                 'message' => 'Your agent account is currently inactive.',
                 'error_code' => 'ACCOUNT_INACTIVE',
                 'account_status' => $user->account_status,
+                'subscription_expiry_date' => $user->subscription_expiry_date?->format('Y-m-d'),
+            ], 403);
+        }
+
+        // Check if access expiry date has passed
+        if ($user->subscription_expiry_date && $user->subscription_expiry_date->isPast()) {
+            return response()->json([
+                'message' => 'Your account access expired on '.$user->subscription_expiry_date->format('M d, Y').'. Please contact the platform administrator to extend your access.',
+                'error_code' => 'ACCOUNT_EXPIRED',
+                'account_status' => 'expired',
+                'subscription_expiry_date' => $user->subscription_expiry_date->format('Y-m-d'),
             ], 403);
         }
 

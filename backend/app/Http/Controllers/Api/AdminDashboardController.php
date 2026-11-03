@@ -65,9 +65,10 @@ class AdminDashboardController extends Controller
                 ->where('role', 'agent')
                 ->selectRaw("
                     COUNT(*) as total_agents,
-                    SUM(CASE WHEN account_status = 'active' THEN 1 ELSE 0 END) as active_agents,
+                    SUM(CASE WHEN account_status = 'active' AND (subscription_expiry_date IS NULL OR subscription_expiry_date >= ?) THEN 1 ELSE 0 END) as active_agents,
+                    SUM(CASE WHEN subscription_expiry_date IS NOT NULL AND subscription_expiry_date < ? THEN 1 ELSE 0 END) as expired_agents,
                     SUM(CASE WHEN account_status = 'suspended' THEN 1 ELSE 0 END) as suspended_agents
-                ")
+                ", [$today, $today])
                 ->first();
 
             // Consolidated Lead counts in 1 single query
@@ -98,13 +99,14 @@ class AdminDashboardController extends Controller
                 'overview' => [
                     'total_agents' => (int) ($agentStats->total_agents ?? 0),
                     'active_agents' => (int) ($agentStats->active_agents ?? 0),
+                    'expired_agents' => (int) ($agentStats->expired_agents ?? 0),
                     'suspended_agents' => (int) ($agentStats->suspended_agents ?? 0),
                     'total_leads' => (int) ($leadStats->total_leads ?? 0),
                     'leads_added_today' => (int) ($leadStats->leads_added_today ?? 0),
                     'won_deals' => (int) ($leadStats->won_deals ?? 0),
                     'followups_today' => (int) ($leadStats->followups_today ?? 0),
                     'active_subscriptions' => (int) ($agentStats->active_agents ?? 0),
-                    'expired_subscriptions' => 0,
+                    'expired_subscriptions' => (int) ($agentStats->expired_agents ?? 0),
                 ],
                 'analytics' => [
                     'leads_by_status' => $leadsByStatus,

@@ -3,7 +3,7 @@ import { Modal } from '../common/Modal';
 import api from '../../lib/api';
 import type { User, AccountStatus } from '../../types';
 import { toast } from 'sonner';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Calendar } from 'lucide-react';
 
 interface AgentFormModalProps {
   isOpen: boolean;
@@ -11,6 +11,12 @@ interface AgentFormModalProps {
   agent?: User | null;
   onSuccess: (agent: User, credentials?: { email: string; password: string }) => void;
 }
+
+const getDefaultExpiry = (months = 1) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().split('T')[0];
+};
 
 export const AgentFormModal: React.FC<AgentFormModalProps> = ({
   isOpen,
@@ -26,6 +32,7 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
     phone: '',
     password: '',
     account_status: 'active' as AccountStatus,
+    subscription_expiry_date: getDefaultExpiry(1),
   });
 
   const [addDemoData, setAddDemoData] = useState(true);
@@ -40,6 +47,9 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
         phone: agent.phone || '',
         password: '',
         account_status: agent.account_status || 'active',
+        subscription_expiry_date: agent.subscription_expiry_date
+          ? agent.subscription_expiry_date.split('T')[0]
+          : getDefaultExpiry(1),
       });
       setAddDemoData(false);
     } else {
@@ -49,6 +59,7 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
         phone: '',
         password: '',
         account_status: 'active',
+        subscription_expiry_date: getDefaultExpiry(1),
       });
       setAddDemoData(true);
     }
@@ -69,6 +80,13 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
     }
   };
 
+  const handleApplyPreset = (months: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      subscription_expiry_date: getDefaultExpiry(months),
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -80,6 +98,7 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
         email: formData.email,
         phone: formData.phone || null,
         account_status: formData.account_status,
+        subscription_expiry_date: formData.subscription_expiry_date,
         password: formData.password || undefined,
       };
 
@@ -124,8 +143,8 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
       title={isEdit ? 'Edit Agent Account' : 'Create Agent Account'}
       description={
         isEdit
-          ? 'Modify real estate agent details and account access status'
-          : 'Provision a new real estate agent account with full CRM access'
+          ? 'Modify real estate agent details, access status, and expiry date'
+          : 'Provision a new real estate agent account with scheduled access expiry'
       }
       maxWidth="md"
     >
@@ -204,8 +223,8 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
           </div>
         </div>
 
-        {/* Account Status */}
-        <div className="pt-2 border-t border-slate-100">
+        {/* Account Status & Expiry Date */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
               Account Status
@@ -216,13 +235,51 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
               onChange={handleChange}
               className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
             >
-              <option value="active">Active (Full CRM Access)</option>
+              <option value="active">Active (Full Access)</option>
               <option value="inactive">Inactive</option>
               <option value="suspended">Suspended (Access Blocked)</option>
             </select>
             <p className="text-[11px] text-slate-400 mt-1">
-              Control whether this agent can log in and manage leads in their dashboard.
+              Status of agent access permissions
             </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center justify-between">
+              <span>Access Expiry Date <span className="text-rose-500">*</span></span>
+            </label>
+            <input
+              type="date"
+              name="subscription_expiry_date"
+              required
+              value={formData.subscription_expiry_date}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 text-sm bg-white border rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 ${
+                errors.subscription_expiry_date ? 'border-rose-400' : 'border-slate-200'
+              }`}
+            />
+            {/* Quick Extension Presets */}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-400">Presets:</span>
+              {[
+                { label: '+1 Mo', months: 1 },
+                { label: '+3 Mo', months: 3 },
+                { label: '+6 Mo', months: 6 },
+                { label: '+1 Yr', months: 12 },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => handleApplyPreset(p.months)}
+                  className="px-2 py-0.5 text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors cursor-pointer"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {errors.subscription_expiry_date && (
+              <p className="text-xs text-rose-500 mt-1">{errors.subscription_expiry_date}</p>
+            )}
           </div>
         </div>
 
@@ -254,7 +311,7 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors"
+            className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Cancel
           </button>
