@@ -3,6 +3,16 @@ export type AccountStatus = 'active' | 'inactive' | 'suspended';
 export type SubscriptionPlan = 'free' | 'basic' | 'pro' | 'custom';
 export type SubscriptionStatus = 'active' | 'expired' | 'trial' | 'cancelled';
 
+export interface LoginHistory {
+  id: number;
+  user_id: number;
+  ip_address: string;
+  user_agent?: string | null;
+  device?: string | null;
+  login_at: string;
+  created_at?: string;
+}
+
 export interface User {
   id: number;
   name: string;

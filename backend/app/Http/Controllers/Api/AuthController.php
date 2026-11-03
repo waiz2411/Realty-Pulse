@@ -42,6 +42,29 @@ class AuthController extends Controller
             'last_login_at' => now(),
         ])->save();
 
+        // Record login history with IP address and device information
+        try {
+            $clientIp = $request->header('CF-Connecting-IP')
+                ?: $request->header('X-Forwarded-For')
+                ?: $request->ip()
+                ?: '127.0.0.1';
+
+            // If X-Forwarded-For contains multiple IPs, take the first one
+            if (str_contains($clientIp, ',')) {
+                $clientIp = trim(explode(',', $clientIp)[0]);
+            }
+
+            \App\Models\LoginHistory::create([
+                'user_id' => $user->id,
+                'ip_address' => substr($clientIp, 0, 64),
+                'user_agent' => substr((string) $request->userAgent(), 0, 500),
+                'device' => \App\Models\LoginHistory::parseDevice((string) $request->userAgent()),
+                'login_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // Silently allow login to proceed if migration is pending
+        }
+
         // Generate Sanctum token
         $token = $user->createToken('auth-token')->plainTextToken;
 

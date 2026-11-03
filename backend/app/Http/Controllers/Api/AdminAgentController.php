@@ -151,11 +151,42 @@ class AdminAgentController extends Controller
             ->limit(10)
             ->get();
 
+        $loginHistory = [];
+        try {
+            $loginHistory = $agent->loginHistories()
+                ->select(['id', 'user_id', 'ip_address', 'device', 'user_agent', 'login_at'])
+                ->latest('login_at')
+                ->limit(50)
+                ->get();
+        } catch (\Throwable $e) {
+            $loginHistory = [];
+        }
+
         return response()->json([
             'agent' => $agent,
             'stats' => $stats,
             'recent_leads' => $recentLeads,
+            'login_history' => $loginHistory,
         ]);
+    }
+
+    /**
+     * Get full paginated login history for an agent
+     */
+    public function loginHistory(Request $request, $id): JsonResponse
+    {
+        $agent = User::where('role', 'agent')->findOrFail($id);
+
+        $perPage = (int) $request->query('per_page', 50);
+        try {
+            $history = $agent->loginHistories()
+                ->latest('login_at')
+                ->paginate($perPage);
+        } catch (\Throwable $e) {
+            $history = [];
+        }
+
+        return response()->json($history);
     }
 
     /**

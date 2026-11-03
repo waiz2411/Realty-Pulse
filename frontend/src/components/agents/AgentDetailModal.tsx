@@ -3,7 +3,7 @@ import { Modal } from '../common/Modal';
 import { AccountStatusBadge } from '../common/AccountStatusBadge';
 import { StatusBadge } from '../common/StatusBadge';
 import api from '../../lib/api';
-import type { Lead, User } from '../../types';
+import type { Lead, User, LoginHistory } from '../../types';
 import {
   Mail,
   Phone,
@@ -15,6 +15,10 @@ import {
   Edit2,
   Sparkles,
   Calendar,
+  Globe,
+  Laptop,
+  Layers,
+  History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,6 +53,8 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
   const [agent, setAgent] = useState<User | null>(null);
   const [stats, setStats] = useState<AgentStatsData | null>(null);
   const [recentLeads, setRecentLeads] = useState<Lead[]>([]);
+  const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
+  const [activeTab, setActiveTab] = useState<'leads' | 'login_history'>('leads');
   const [loading, setLoading] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
@@ -60,6 +66,7 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
       setAgent(res.data.agent);
       setStats(res.data.stats);
       setRecentLeads(res.data.recent_leads || []);
+      setLoginHistory(res.data.login_history || []);
     } catch {
       toast.error('Failed to load agent profile');
     } finally {
@@ -254,11 +261,11 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
 
             <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
               <span className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-                Last Activity
+                Last Activity & IP
               </span>
               <div className="font-medium text-slate-800 flex items-center gap-1.5 truncate">
                 <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>
+                <span className="truncate">
                   {agent.last_login_at
                     ? new Date(agent.last_login_at).toLocaleDateString([], {
                         month: 'short',
@@ -269,6 +276,12 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
                     : 'Never'}
                 </span>
               </div>
+              {loginHistory.length > 0 && loginHistory[0]?.ip_address && (
+                <div className="text-[11px] text-blue-700 font-mono flex items-center gap-1 pt-0.5">
+                  <Globe className="w-3 h-3 text-blue-500 shrink-0" />
+                  <span className="truncate">IP: {loginHistory[0].ip_address}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -307,52 +320,160 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
             </div>
           )}
 
-          {/* Recent Leads by this Agent */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              Recent Leads Under Management
-            </h4>
-            {recentLeads.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl space-y-3">
-                <p>This agent has not registered any leads yet.</p>
-                <button
-                  onClick={handleSeedDemoData}
-                  disabled={seedingDemo}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
-                >
-                  {seedingDemo ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>Populate 6 Sample Leads</span>
-                </button>
-              </div>
-            ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
-                {recentLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+          {/* Tab Navigation: Leads vs Login History */}
+          <div className="border-b border-slate-200 pt-2">
+            <nav className="flex space-x-6 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setActiveTab('leads')}
+                className={`pb-2.5 flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${
+                  activeTab === 'leads'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>Leads Under Management</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600">
+                  {stats?.total_leads || recentLeads.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('login_history')}
+                className={`pb-2.5 flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${
+                  activeTab === 'login_history'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>Login & IP History</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-700 font-semibold">
+                  {loginHistory.length}
+                </span>
+              </button>
+            </nav>
+          </div>
+
+          {/* Tab 1: Recent Leads by this Agent */}
+          {activeTab === 'leads' && (
+            <div>
+              {recentLeads.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl space-y-3">
+                  <p>This agent has not registered any leads yet.</p>
+                  <button
+                    onClick={handleSeedDemoData}
+                    disabled={seedingDemo}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
                   >
-                    <div>
-                      <div className="font-semibold text-slate-800">{lead.name}</div>
-                      <div className="text-slate-400 text-[11px]">
-                        {lead.phone} • {lead.property_type || 'Apartment'} •{' '}
-                        {lead.interested_property || 'General Interest'}
+                    {seedingDemo ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>Populate 6 Sample Leads</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
+                  {recentLeads.map((lead) => (
+                    <div
+                      key={lead.id}
+                      className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                    >
+                      <div>
+                        <div className="font-semibold text-slate-800">{lead.name}</div>
+                        <div className="text-slate-400 text-[11px]">
+                          {lead.phone} • {lead.property_type || 'Apartment'} •{' '}
+                          {lead.interested_property || 'General Interest'}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <StatusBadge status={lead.status} />
+                        <span className="text-slate-400 text-[11px]">
+                          {new Date(lead.created_at).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <StatusBadge status={lead.status} />
-                      <span className="text-slate-400 text-[11px]">
-                        {new Date(lead.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Login & IP Tracking History */}
+          {activeTab === 'login_history' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">
+                  Full login sessions audit with IP address and device information for {agent.name}.
+                </span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {loginHistory.length} recorded session{loginHistory.length === 1 ? '' : 's'}
+                </span>
               </div>
-            )}
-          </div>
+
+              {loginHistory.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl space-y-2">
+                  <Globe className="w-7 h-7 text-slate-300 mx-auto mb-1" />
+                  <p className="font-semibold text-slate-700">No login sessions recorded yet</p>
+                  <p className="text-slate-400 max-w-sm mx-auto">
+                    When this agent logs in, their IP address, browser device, and exact login timestamp will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
+                  <div className="bg-slate-50 px-4 py-2.5 grid grid-cols-12 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <div className="col-span-4">Login Timestamp</div>
+                    <div className="col-span-4">IP Address</div>
+                    <div className="col-span-4">Device & Browser</div>
+                  </div>
+                  {loginHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="px-4 py-3 grid grid-cols-12 items-center hover:bg-slate-50/80 transition-colors"
+                    >
+                      <div className="col-span-4 font-medium text-slate-800 flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <div>
+                          <div>
+                            {new Date(item.login_at).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            {new Date(item.login_at).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-span-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 shadow-2xs">
+                          <Globe className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span>{item.ip_address}</span>
+                        </span>
+                      </div>
+
+                      <div className="col-span-4 flex items-center gap-2 text-slate-600 truncate">
+                        <Laptop className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate font-medium text-slate-700" title={item.user_agent || undefined}>
+                          {item.device || 'Web Browser'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </Modal>

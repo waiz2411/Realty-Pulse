@@ -59,6 +59,11 @@ class User extends Authenticatable
         return $this->hasMany(LeadActivity::class, 'agent_id');
     }
 
+    public function loginHistories(): HasMany
+    {
+        return $this->hasMany(LoginHistory::class)->latest('login_at');
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

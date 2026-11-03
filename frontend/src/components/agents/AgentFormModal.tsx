@@ -3,7 +3,7 @@ import { Modal } from '../common/Modal';
 import api from '../../lib/api';
 import type { User, AccountStatus } from '../../types';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, Calendar } from 'lucide-react';
+import { Loader2, Sparkles, Calendar, Eye, EyeOff } from 'lucide-react';
 
 interface AgentFormModalProps {
   isOpen: boolean;
@@ -36,6 +36,7 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
   });
 
   const [addDemoData, setAddDemoData] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -63,6 +64,7 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
       });
       setAddDemoData(true);
     }
+    setShowPassword(false);
     setErrors({});
   }, [agent, isOpen]);
 
@@ -212,14 +214,28 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
             <label className="block text-xs font-medium text-slate-700 mb-1">
               {isEdit ? 'New Password (Optional)' : 'Password (Leave blank to generate)'}
             </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder={isEdit ? 'Leave blank to keep unchanged' : 'Auto-generated if empty'}
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder={isEdit ? 'Leave blank to keep unchanged' : 'Auto-generated if empty'}
+                className="w-full pl-3 pr-10 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
