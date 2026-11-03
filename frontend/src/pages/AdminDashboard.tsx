@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import type { AdminStats, Lead, User } from '../types';
 import { AccountStatusBadge } from '../components/common/AccountStatusBadge';
-import { SubscriptionBadge } from '../components/common/SubscriptionBadge';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   Users,
@@ -10,11 +9,10 @@ import {
   ShieldAlert,
   Building,
   Calendar,
-  CreditCard,
-  AlertTriangle,
+  CheckCircle2,
+  Clock,
   ArrowRight,
   Loader2,
-  Clock,
   Eye,
   Plus,
 } from 'lucide-react';
@@ -139,20 +137,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       border: 'border-amber-200/80',
     },
     {
-      title: 'Active Subscriptions',
-      value: overview?.active_subscriptions || 0,
-      icon: CreditCard,
+      title: 'Deals Won (Closed)',
+      value: overview?.won_deals || 0,
+      icon: CheckCircle2,
+      bg: 'bg-emerald-50/70',
+      text: 'text-emerald-900',
+      border: 'border-emerald-200/80',
+    },
+    {
+      title: 'Follow-ups Today',
+      value: overview?.followups_today || 0,
+      icon: Clock,
       bg: 'bg-purple-50/70',
       text: 'text-purple-900',
       border: 'border-purple-200/80',
-    },
-    {
-      title: 'Expired Subscriptions',
-      value: overview?.expired_subscriptions || 0,
-      icon: AlertTriangle,
-      bg: 'bg-orange-50/70',
-      text: 'text-orange-900',
-      border: 'border-orange-200/80',
     },
   ];
 
@@ -196,8 +194,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* 7 Core Overview Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      {/* 6 Core Overview Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {overviewCards.map((card, idx) => {
           const Icon = card.icon;
           return (
@@ -347,7 +345,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <th className="py-3 px-4">Contact</th>
                 <th className="py-3 px-4">Total Leads</th>
                 <th className="py-3 px-4">Account Status</th>
-                <th className="py-3 px-4">Subscription</th>
                 <th className="py-3 px-4">Last Login</th>
                 <th className="py-3 px-4">Created Date</th>
                 <th className="py-3 px-4 text-right">Actions</th>
@@ -378,12 +375,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <td className="py-3 px-4">
                     <AccountStatusBadge status={agent.account_status} />
                   </td>
-                  <td className="py-3 px-4">
-                    <SubscriptionBadge
-                      plan={agent.subscription_plan}
-                      status={agent.subscription_status}
-                    />
-                  </td>
                   <td className="py-3 px-4 text-slate-500">
                     {agent.last_login_at
                       ? new Date(agent.last_login_at).toLocaleDateString([], {
@@ -413,7 +404,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               ))
             ) : (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-slate-400">
+                <td colSpan={7} className="py-8 text-center text-slate-400">
                   No agents found
                 </td>
               </tr>

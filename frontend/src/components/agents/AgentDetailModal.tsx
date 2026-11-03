@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { AccountStatusBadge } from '../common/AccountStatusBadge';
-import { SubscriptionBadge } from '../common/SubscriptionBadge';
 import { StatusBadge } from '../common/StatusBadge';
 import api from '../../lib/api';
 import type { Lead, User } from '../../types';
 import {
   Mail,
   Phone,
-  Calendar,
   Clock,
   Key,
   ShieldAlert,
   ShieldCheck,
-  Building,
   Loader2,
   Edit2,
-  DollarSign,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -53,6 +50,7 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
   const [recentLeads, setRecentLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
 
   const fetchAgent = async (id: number) => {
     setLoading(true);
@@ -92,6 +90,23 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
     }
   };
 
+  const handleSeedDemoData = async () => {
+    if (!agent) return;
+    setSeedingDemo(true);
+    try {
+      const res = await api.post(`/admin/agents/${agent.id}/seed-demo-data`);
+      toast.success(res.data.message || 'Sample leads added successfully!');
+      if (agentId) {
+        await fetchAgent(agentId);
+      }
+      onStatusChanged(res.data.agent || agent);
+    } catch {
+      toast.error('Failed to populate demo data');
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -99,7 +114,7 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={agent ? agent.name : 'Agent Profile'}
-      description="Agent activity, subscription, and lead metrics"
+      description="Agent activity, contact details, and lead management performance"
       maxWidth="xl"
     >
       {loading || !agent ? (
@@ -112,17 +127,29 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
             <div className="flex items-center gap-2">
               <AccountStatusBadge status={agent.account_status} />
-              <SubscriptionBadge
-                plan={agent.subscription_plan}
-                status={agent.subscription_status}
-              />
+              <span className="text-xs text-slate-500 font-medium">Real Estate Agent</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Seed Demo Data Button */}
+              <button
+                onClick={handleSeedDemoData}
+                disabled={seedingDemo}
+                title="Add 6 realistic sample buyer/seller leads to this agent's dashboard"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition-colors shadow-2xs cursor-pointer"
+              >
+                {seedingDemo ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                )}
+                <span>Add Demo Leads</span>
+              </button>
+
               <button
                 onClick={handleToggleStatus}
                 disabled={toggling}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors shadow-2xs ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors shadow-2xs cursor-pointer ${
                   agent.account_status === 'active'
                     ? 'text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100'
                     : 'text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
@@ -145,7 +172,7 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
                   onClose();
                   onResetPassword(agent);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs cursor-pointer"
               >
                 <Key className="w-3.5 h-3.5 text-slate-400" />
                 <span>Reset Password</span>
@@ -156,7 +183,7 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
                   onClose();
                   onEdit(agent);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs cursor-pointer"
               >
                 <Edit2 className="w-3.5 h-3.5 text-slate-400" />
                 <span>Edit Profile</span>
@@ -247,8 +274,20 @@ export const AgentDetailModal: React.FC<AgentDetailModalProps> = ({
               Recent Leads Under Management
             </h4>
             {recentLeads.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                This agent has not registered any leads yet.
+              <div className="p-8 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl space-y-3">
+                <p>This agent has not registered any leads yet.</p>
+                <button
+                  onClick={handleSeedDemoData}
+                  disabled={seedingDemo}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
+                >
+                  {seedingDemo ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>Populate 6 Sample Leads</span>
+                </button>
               </div>
             ) : (
               <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">

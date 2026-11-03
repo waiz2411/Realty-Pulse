@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Lead;
+use App\Models\LeadActivity;
+use App\Models\LeadNote;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,16 +40,6 @@ class AdminAgentController extends Controller
             $query->where('account_status', $accountStatus);
         }
 
-        // Filter by subscription_status
-        if ($subscriptionStatus = $request->query('subscription_status')) {
-            $query->where('subscription_status', $subscriptionStatus);
-        }
-
-        // Filter by subscription_plan
-        if ($subscriptionPlan = $request->query('subscription_plan')) {
-            $query->where('subscription_plan', $subscriptionPlan);
-        }
-
         $perPage = (int) $request->query('per_page', 10);
         $agents = $query->paginate($perPage);
 
@@ -54,7 +47,7 @@ class AdminAgentController extends Controller
     }
 
     /**
-     * Create a new agent account
+     * Create a new agent account (with optional instant demo leads)
      */
     public function store(Request $request): JsonResponse
     {
@@ -64,9 +57,7 @@ class AdminAgentController extends Controller
             'phone' => 'nullable|string|max:30',
             'password' => 'nullable|string|min:6',
             'account_status' => ['required', Rule::in(['active', 'inactive', 'suspended'])],
-            'subscription_plan' => ['required', Rule::in(['free', 'basic', 'pro', 'custom'])],
-            'subscription_status' => ['nullable', Rule::in(['active', 'expired', 'trial', 'cancelled'])],
-            'subscription_expiry_date' => 'nullable|date',
+            'add_demo_data' => 'nullable|boolean',
         ]);
 
         $plainPassword = ! empty($validated['password'])
@@ -80,17 +71,25 @@ class AdminAgentController extends Controller
             'password' => Hash::make($plainPassword),
             'role' => 'agent',
             'account_status' => $validated['account_status'],
-            'subscription_plan' => $validated['subscription_plan'],
-            'subscription_status' => $validated['subscription_status'] ?? 'active',
+            'subscription_plan' => 'standard',
+            'subscription_status' => 'active',
             'subscription_start_date' => now()->toDateString(),
-            'subscription_expiry_date' => $validated['subscription_expiry_date'] ?? now()->addMonth()->toDateString(),
+            'subscription_expiry_date' => null,
         ]);
+
+        $demoLeadsCreated = 0;
+        if ($request->boolean('add_demo_data')) {
+            $demoLeadsCreated = $this->seedDemoLeadsForAgent($agent);
+        }
 
         $this->clearAdminCache();
 
         return response()->json([
-            'message' => 'Agent account created successfully',
-            'agent' => $agent->loadCount('leads'),
+            'message' => $demoLeadsCreated > 0
+                ? "Agent account created successfully with {$demoLeadsCreated} sample leads!"
+                : 'Agent account created successfully',
+            'agent' => $agent->fresh()->loadCount('leads'),
+            'demo_leads_created' => $demoLeadsCreated,
             // Return plain credentials only once for copy/paste sharing
             'credentials' => [
                 'email' => $agent->email,
@@ -158,9 +157,6 @@ class AdminAgentController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($agent->id)],
             'phone' => 'nullable|string|max:30',
             'account_status' => ['required', Rule::in(['active', 'inactive', 'suspended'])],
-            'subscription_plan' => ['required', Rule::in(['free', 'basic', 'pro', 'custom'])],
-            'subscription_status' => ['required', Rule::in(['active', 'expired', 'trial', 'cancelled'])],
-            'subscription_expiry_date' => 'nullable|date',
             'password' => 'nullable|string|min:6',
         ]);
 
@@ -169,9 +165,6 @@ class AdminAgentController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'account_status' => $validated['account_status'],
-            'subscription_plan' => $validated['subscription_plan'],
-            'subscription_status' => $validated['subscription_status'],
-            'subscription_expiry_date' => $validated['subscription_expiry_date'] ?? null,
         ];
 
         if (! empty($validated['password'])) {
@@ -257,6 +250,184 @@ class AdminAgentController extends Controller
         return response()->json([
             'message' => "Agent account '{$agentName}' has been permanently deleted.",
         ]);
+    }
+
+    /**
+     * Seed realistic sample demo leads for an agent
+     */
+    public function seedDemoData($id): JsonResponse
+    {
+        $agent = User::where('role', 'agent')->findOrFail($id);
+        $count = $this->seedDemoLeadsForAgent($agent);
+
+        $this->clearAdminCache();
+        Cache::forget("agent_stats_{$agent->id}");
+
+        return response()->json([
+            'message' => "Successfully populated {$count} sample demo leads for {$agent->name}!",
+            'leads_count' => $agent->leads()->count(),
+            'agent' => $agent->fresh()->loadCount('leads'),
+        ]);
+    }
+
+    /**
+     * Internal helper to create 6 rich demo leads with notes & activities
+     */
+    private function seedDemoLeadsForAgent(User $agent): int
+    {
+        $today = now()->toDateString();
+        $tomorrow = now()->addDay()->toDateString();
+        $inThreeDays = now()->addDays(3)->toDateString();
+        $yesterday = now()->subDays(2)->toDateString();
+
+        $demoLeads = [
+            [
+                'name' => 'Sarah Mitchell',
+                'phone' => '+1 (555) 349-8201',
+                'email' => 'sarah.m@example.com',
+                'source' => 'Website',
+                'property_type' => 'Apartment',
+                'interested_property' => 'Skyline Towers - 3BHK Luxury Suite',
+                'preferred_location' => 'Downtown Central',
+                'budget' => '$485,000',
+                'status' => 'new',
+                'priority' => 'high',
+                'follow_up_date' => $today,
+                'notes' => [
+                    'Client registered through website inquiry form. Looking for high floor unit with parking.',
+                    'Prefers south-facing balcony. Ready for site visit this Saturday.',
+                ],
+            ],
+            [
+                'name' => 'Michael Vance',
+                'phone' => '+1 (555) 721-4490',
+                'email' => 'marcus.v@example.com',
+                'source' => 'Facebook Ads',
+                'property_type' => 'House',
+                'interested_property' => 'The Grand Oak Villa - 4 Bed with Pool',
+                'preferred_location' => 'Greenhill Suburbs',
+                'budget' => '$850,000',
+                'status' => 'qualified',
+                'priority' => 'high',
+                'follow_up_date' => $tomorrow,
+                'notes' => [
+                    'Mortgage pre-approved up to $900k through Chase Bank. Family of 4 relocating in summer.',
+                ],
+            ],
+            [
+                'name' => 'Jessica Lin',
+                'phone' => '+1 (555) 489-1123',
+                'email' => 'jessica.lin@example.com',
+                'source' => 'Phone Call',
+                'property_type' => 'Commercial',
+                'interested_property' => 'Innovation Hub Ground Floor Retail',
+                'preferred_location' => 'Business District',
+                'budget' => '$1,200,000',
+                'status' => 'site_visit_scheduled',
+                'priority' => 'medium',
+                'follow_up_date' => $inThreeDays,
+                'notes' => [
+                    'Site visit scheduled for Thursday 3:00 PM. Requested floor plans and lease history.',
+                ],
+            ],
+            [
+                'name' => 'David & Lisa Ramirez',
+                'phone' => '+1 (555) 672-9934',
+                'email' => 'ramirez.family@example.com',
+                'source' => 'Instagram',
+                'property_type' => 'Apartment',
+                'interested_property' => 'Harborfront Studio Loft 4B',
+                'preferred_location' => 'Marina Bay',
+                'budget' => '$340,000',
+                'status' => 'negotiation',
+                'priority' => 'high',
+                'follow_up_date' => $today,
+                'notes' => [
+                    'Initial offer submitted at $325,000. Seller willing to counter at $335,000 including custom kitchen island.',
+                ],
+            ],
+            [
+                'name' => 'Victoria Bennett',
+                'phone' => '+1 (555) 231-8845',
+                'email' => 'v.bennett@example.com',
+                'source' => 'Referral',
+                'property_type' => 'Plot',
+                'interested_property' => 'Pinecrest Scenic Hill Plot (0.75 Acre)',
+                'preferred_location' => 'Highland Valley',
+                'budget' => '$275,000',
+                'status' => 'won',
+                'priority' => 'medium',
+                'follow_up_date' => null,
+                'notes' => [
+                    'Title transferred and closing completed smoothly! Commission disbursed.',
+                ],
+            ],
+            [
+                'name' => 'James & Chloe Wilson',
+                'phone' => '+1 (555) 902-3312',
+                'email' => 'wilson.home@example.com',
+                'source' => 'Walk-in',
+                'property_type' => 'House',
+                'interested_property' => 'Maplewood Modern Townhouse',
+                'preferred_location' => 'West End Park',
+                'budget' => '$520,000',
+                'status' => 'contacted',
+                'priority' => 'low',
+                'follow_up_date' => $yesterday, // Overdue follow-up for demonstration
+                'notes' => [
+                    'Walked into office Sunday afternoon. Sent email brochure of 3 alternative houses in the district.',
+                ],
+            ],
+        ];
+
+        foreach ($demoLeads as $leadData) {
+            $notes = $leadData['notes'];
+            unset($leadData['notes']);
+
+            $lead = $agent->leads()->create($leadData);
+
+            // Lead created activity
+            LeadActivity::create([
+                'lead_id' => $lead->id,
+                'agent_id' => $agent->id,
+                'activity_type' => 'lead_created',
+                'description' => "Lead '{$lead->name}' was added to CRM",
+                'new_value' => $lead->status,
+                'created_at' => now()->subDays(rand(2, 5)),
+            ]);
+
+            // Add notes & note activities
+            foreach ($notes as $noteText) {
+                LeadNote::create([
+                    'lead_id' => $lead->id,
+                    'agent_id' => $agent->id,
+                    'note' => $noteText,
+                    'created_at' => now()->subHours(rand(3, 24)),
+                ]);
+
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'agent_id' => $agent->id,
+                    'activity_type' => 'note_added',
+                    'description' => 'Note added: '.substr($noteText, 0, 75).'...',
+                    'created_at' => now()->subHours(rand(2, 23)),
+                ]);
+            }
+
+            if ($lead->status !== 'new') {
+                LeadActivity::create([
+                    'lead_id' => $lead->id,
+                    'agent_id' => $agent->id,
+                    'activity_type' => 'status_changed',
+                    'description' => "Status progressed to '{$lead->status}'",
+                    'old_value' => 'new',
+                    'new_value' => $lead->status,
+                    'created_at' => now()->subHours(rand(1, 12)),
+                ]);
+            }
+        }
+
+        return count($demoLeads);
     }
 
     private function clearAdminCache(): void

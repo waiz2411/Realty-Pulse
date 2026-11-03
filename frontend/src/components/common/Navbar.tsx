@@ -59,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <Shield className="w-2.5 h-2.5" /> Super Admin
                   </span>
                 ) : (
-                  <span>Agent • {user?.subscription_plan}</span>
+                  <span>Real Estate Agent</span>
                 )}
               </div>
             </div>

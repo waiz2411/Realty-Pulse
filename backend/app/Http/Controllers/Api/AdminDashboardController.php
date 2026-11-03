@@ -66,18 +66,18 @@ class AdminDashboardController extends Controller
                 ->selectRaw("
                     COUNT(*) as total_agents,
                     SUM(CASE WHEN account_status = 'active' THEN 1 ELSE 0 END) as active_agents,
-                    SUM(CASE WHEN account_status = 'suspended' THEN 1 ELSE 0 END) as suspended_agents,
-                    SUM(CASE WHEN subscription_status = 'active' AND (subscription_expiry_date IS NULL OR subscription_expiry_date >= ?) THEN 1 ELSE 0 END) as active_subscriptions,
-                    SUM(CASE WHEN subscription_status = 'expired' OR (subscription_expiry_date IS NOT NULL AND subscription_expiry_date < ?) THEN 1 ELSE 0 END) as expired_subscriptions
-                ", [$today, $today])
+                    SUM(CASE WHEN account_status = 'suspended' THEN 1 ELSE 0 END) as suspended_agents
+                ")
                 ->first();
 
             // Consolidated Lead counts in 1 single query
             $leadStats = DB::table('leads')
                 ->selectRaw("
                     COUNT(*) as total_leads,
-                    SUM(CASE WHEN DATE(created_at) = ? THEN 1 ELSE 0 END) as leads_added_today
-                ", [$today])
+                    SUM(CASE WHEN DATE(created_at) = ? THEN 1 ELSE 0 END) as leads_added_today,
+                    SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) as won_deals,
+                    SUM(CASE WHEN follow_up_date = ? THEN 1 ELSE 0 END) as followups_today
+                ", [$today, $today])
                 ->first();
 
             // Leads by status breakdown
@@ -101,8 +101,10 @@ class AdminDashboardController extends Controller
                     'suspended_agents' => (int) ($agentStats->suspended_agents ?? 0),
                     'total_leads' => (int) ($leadStats->total_leads ?? 0),
                     'leads_added_today' => (int) ($leadStats->leads_added_today ?? 0),
-                    'active_subscriptions' => (int) ($agentStats->active_subscriptions ?? 0),
-                    'expired_subscriptions' => (int) ($agentStats->expired_subscriptions ?? 0),
+                    'won_deals' => (int) ($leadStats->won_deals ?? 0),
+                    'followups_today' => (int) ($leadStats->followups_today ?? 0),
+                    'active_subscriptions' => (int) ($agentStats->active_agents ?? 0),
+                    'expired_subscriptions' => 0,
                 ],
                 'analytics' => [
                     'leads_by_status' => $leadsByStatus,

@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import { AccountStatusBadge } from '../components/common/AccountStatusBadge';
-import { SubscriptionBadge } from '../components/common/SubscriptionBadge';
 import {
   User,
   Lock,
   Phone,
   Mail,
   ShieldCheck,
-  CreditCard,
   Check,
   Loader2,
 } from 'lucide-react';
@@ -214,12 +212,12 @@ export const AgentSettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Account & Subscription Overview */}
+        {/* Right Column: Account Status Overview */}
         <div className="space-y-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-blue-600" />
-              <span>Subscription & Status</span>
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
+              <span>Account Status & Access</span>
             </h3>
 
             <div className="space-y-3 text-xs">
@@ -229,33 +227,25 @@ export const AgentSettingsPage: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span className="text-slate-500">Plan</span>
-                <SubscriptionBadge plan={user?.subscription_plan} />
+                <span className="text-slate-500">Assigned Role</span>
+                <span className="font-semibold text-slate-900">Real Estate Agent</span>
               </div>
 
               <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span className="text-slate-500">Subscription Status</span>
-                <SubscriptionBadge status={user?.subscription_status} />
-              </div>
-
-              <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span className="text-slate-500">Start Date</span>
-                <span className="font-medium text-slate-800">
-                  {user?.subscription_start_date || 'N/A'}
-                </span>
+                <span className="text-slate-500">CRM Access</span>
+                <span className="font-medium text-emerald-600">Full Access (Leads & Follow-ups)</span>
               </div>
 
               <div className="flex items-center justify-between py-2">
-                <span className="text-slate-500">Renewal / Expiry</span>
-                <span className="font-semibold text-slate-900">
-                  {user?.subscription_expiry_date || 'N/A'}
+                <span className="text-slate-500">Joined Platform</span>
+                <span className="font-medium text-slate-800">
+                  {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Active'}
                 </span>
               </div>
             </div>
 
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 leading-relaxed">
-              Subscriptions and tenant provisioning are centrally managed by your SaaS
-              platform administrator.
+              Your real estate lead management workspace and account access are managed by your platform administrator.
             </div>
           </div>
         </div>

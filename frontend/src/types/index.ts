@@ -123,8 +123,10 @@ export interface AdminStats {
     suspended_agents: number;
     total_leads: number;
     leads_added_today: number;
-    active_subscriptions: number;
-    expired_subscriptions: number;
+    won_deals?: number;
+    followups_today?: number;
+    active_subscriptions?: number;
+    expired_subscriptions?: number;
   };
   analytics: {
     leads_by_status: Record<string, number>;

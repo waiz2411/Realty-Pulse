@@ -136,35 +136,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Bottom Subscription Info (For Agents) */}
-        {!isAdmin && user && (
-          <div className="px-3 py-2 mx-3 my-2 rounded-xl bg-slate-50 border border-slate-100">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-slate-500 font-medium">Subscription</span>
-              <span className="font-semibold text-slate-800 uppercase text-[10px]">
-                {user.subscription_plan}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span>Status:</span>
-              <span
-                className={`font-medium capitalize ${
-                  user.subscription_status === 'active'
-                    ? 'text-emerald-600'
-                    : 'text-rose-600'
-                }`}
-              >
-                {user.subscription_status}
-              </span>
-            </div>
-            {user.subscription_expiry_date && (
-              <div className="text-[10px] text-slate-400 mt-1">
-                Renews/Expires: {user.subscription_expiry_date}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* User Card & Logout */}
         <div className="p-3 border-t border-slate-100">
           <div className="flex items-center justify-between gap-2 p-2 rounded-xl hover:bg-slate-50 transition-colors">

@@ -105,6 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/agents/{id}', [AdminAgentController::class, 'update']);
         Route::patch('/agents/{id}/status', [AdminAgentController::class, 'updateStatus']);
         Route::post('/agents/{id}/reset-password', [AdminAgentController::class, 'resetPassword']);
+        Route::post('/agents/{id}/seed-demo-data', [AdminAgentController::class, 'seedDemoData']);
         Route::delete('/agents/{id}', [AdminAgentController::class, 'destroy']);
     });
 

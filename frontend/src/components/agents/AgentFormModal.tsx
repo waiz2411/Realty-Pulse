@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import api from '../../lib/api';
-import type {
-  User,
-  AccountStatus,
-  SubscriptionPlan,
-  SubscriptionStatus,
-} from '../../types';
+import type { User, AccountStatus } from '../../types';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface AgentFormModalProps {
   isOpen: boolean;
@@ -31,11 +26,9 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
     phone: '',
     password: '',
     account_status: 'active' as AccountStatus,
-    subscription_plan: 'basic' as SubscriptionPlan,
-    subscription_status: 'active' as SubscriptionStatus,
-    subscription_expiry_date: '',
   });
 
+  const [addDemoData, setAddDemoData] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -47,26 +40,17 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
         phone: agent.phone || '',
         password: '',
         account_status: agent.account_status || 'active',
-        subscription_plan: agent.subscription_plan || 'basic',
-        subscription_status: agent.subscription_status || 'active',
-        subscription_expiry_date: agent.subscription_expiry_date
-          ? agent.subscription_expiry_date.split('T')[0]
-          : '',
       });
+      setAddDemoData(false);
     } else {
-      // Default expiry 1 month from now
-      const oneMonth = new Date();
-      oneMonth.setMonth(oneMonth.getMonth() + 1);
       setFormData({
         name: '',
         email: '',
         phone: '',
         password: '',
         account_status: 'active',
-        subscription_plan: 'basic',
-        subscription_status: 'active',
-        subscription_expiry_date: oneMonth.toISOString().split('T')[0],
       });
+      setAddDemoData(true);
     }
     setErrors({});
   }, [agent, isOpen]);
@@ -91,11 +75,17 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
     setErrors({});
 
     try {
-      const payload = {
-        ...formData,
-        subscription_expiry_date: formData.subscription_expiry_date || null,
+      const payload: Record<string, unknown> = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || null,
+        account_status: formData.account_status,
         password: formData.password || undefined,
       };
+
+      if (!isEdit) {
+        payload.add_demo_data = addDemoData;
+      }
 
       if (isEdit && agent) {
         const res = await api.put(`/admin/agents/${agent.id}`, payload);
@@ -103,7 +93,10 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
         onSuccess(res.data.agent);
       } else {
         const res = await api.post('/admin/agents', payload);
-        toast.success('Agent account created successfully');
+        const demoMsg = res.data.demo_leads_created
+          ? ` (${res.data.demo_leads_created} demo leads added)`
+          : '';
+        toast.success(`Agent account created successfully${demoMsg}!`);
         onSuccess(res.data.agent, res.data.credentials);
       }
       onClose();
@@ -131,8 +124,8 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
       title={isEdit ? 'Edit Agent Account' : 'Create Agent Account'}
       description={
         isEdit
-          ? 'Modify real estate agent permissions, status and subscription'
-          : 'Provision a new real estate agent tenant workspace'
+          ? 'Modify real estate agent details and account access status'
+          : 'Provision a new real estate agent account with full CRM access'
       }
       maxWidth="md"
     >
@@ -211,8 +204,8 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
           </div>
         </div>
 
-        {/* Account Status & Subscription Plan */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+        {/* Account Status */}
+        <div className="pt-2 border-t border-slate-100">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
               Account Status
@@ -223,62 +216,38 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
               onChange={handleChange}
               className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
             >
-              <option value="active">Active (Full Access)</option>
+              <option value="active">Active (Full CRM Access)</option>
               <option value="inactive">Inactive</option>
               <option value="suspended">Suspended (Access Blocked)</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              Subscription Plan
-            </label>
-            <select
-              name="subscription_plan"
-              value={formData.subscription_plan}
-              onChange={handleChange}
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="free">Free</option>
-              <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
-              <option value="custom">Custom</option>
-            </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Control whether this agent can log in and manage leads in their dashboard.
+            </p>
           </div>
         </div>
 
-        {/* Subscription Status & Expiry */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              Subscription Status
+        {/* Demo Data Option (Only for new accounts) */}
+        {!isEdit && (
+          <div className="pt-1">
+            <label className="flex items-start gap-3 p-3.5 bg-blue-50/60 hover:bg-blue-50/80 border border-blue-200/80 rounded-xl cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={addDemoData}
+                onChange={(e) => setAddDemoData(e.target.checked)}
+                className="mt-0.5 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+              />
+              <div className="text-xs">
+                <span className="font-semibold text-blue-900 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  Add demo data to this account
+                </span>
+                <span className="text-slate-600 mt-0.5 block leading-relaxed">
+                  Automatically populates 6 realistic buyer/seller leads, activity timeline, and scheduled follow-ups so the agent can see how their dashboard will look right away.
+                </span>
+              </div>
             </label>
-            <select
-              name="subscription_status"
-              value={formData.subscription_status}
-              onChange={handleChange}
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="active">Active</option>
-              <option value="trial">Trial</option>
-              <option value="expired">Expired (Blocks Access)</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
           </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              Subscription Expiry Date
-            </label>
-            <input
-              type="date"
-              name="subscription_expiry_date"
-              value={formData.subscription_expiry_date}
-              onChange={handleChange}
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-        </div>
+        )}
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
           <button
@@ -292,7 +261,7 @@ export const AgentFormModal: React.FC<AgentFormModalProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer"
           >
             {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {isEdit ? 'Update Account' : 'Create Agent Account'}

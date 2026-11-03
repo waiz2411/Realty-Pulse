@@ -64,7 +64,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-3" />
-        <p className="text-sm font-medium text-slate-500">Loading RealtyPulse SaaS...</p>
+        <p className="text-sm font-medium text-slate-500">Loading RealtyPulse...</p>
       </div>
     );
   }

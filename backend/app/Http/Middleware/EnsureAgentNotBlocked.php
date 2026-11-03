@@ -30,9 +30,6 @@ class EnsureAgentNotBlocked
                 'message' => 'Your agent account has been suspended by the platform administrator.',
                 'error_code' => 'ACCOUNT_SUSPENDED',
                 'account_status' => $user->account_status,
-                'subscription_status' => $user->subscription_status,
-                'subscription_plan' => $user->subscription_plan,
-                'subscription_expiry_date' => $user->subscription_expiry_date?->format('Y-m-d'),
             ], 403);
         }
 
@@ -41,21 +38,6 @@ class EnsureAgentNotBlocked
                 'message' => 'Your agent account is currently inactive.',
                 'error_code' => 'ACCOUNT_INACTIVE',
                 'account_status' => $user->account_status,
-                'subscription_status' => $user->subscription_status,
-                'subscription_plan' => $user->subscription_plan,
-                'subscription_expiry_date' => $user->subscription_expiry_date?->format('Y-m-d'),
-            ], 403);
-        }
-
-        // Check subscription status
-        if (! $user->hasActiveSubscription()) {
-            return response()->json([
-                'message' => 'Your subscription has expired or is inactive. Please contact the administrator to renew your plan.',
-                'error_code' => 'SUBSCRIPTION_EXPIRED',
-                'account_status' => $user->account_status,
-                'subscription_status' => $user->subscription_status,
-                'subscription_plan' => $user->subscription_plan,
-                'subscription_expiry_date' => $user->subscription_expiry_date?->format('Y-m-d'),
             ], 403);
         }
 
